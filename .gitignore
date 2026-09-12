@@ -1,0 +1,5 @@
+# 動画ファイル本体は管理しない（ディレクトリ構成のみ残す）
+source_videos/**
+encoded_videos/**
+!source_videos/.gitkeep
+!encoded_videos/.gitkeep

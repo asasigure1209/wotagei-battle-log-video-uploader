@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+#MISE description="source_videos の動画をエンコードして encoded_videos に出力する"
+#USAGE flag "--all" help="すべての動画をエンコードする"
+#USAGE flag "--include <pattern>" help="対象を絞り込む glob パターン (例: 本戦/*.mp4)"
+#USAGE flag "--force" help="出力済みのファイルも再エンコードする"
+
+set -euo pipefail
+
+cd "${MISE_PROJECT_ROOT:-$(dirname "$0")/..}"
+
+src_dir="source_videos"
+out_dir="encoded_videos"
+
+pattern="${usage_include:-}"
+if [[ -z $pattern ]]; then
+  if [[ ${usage_all:-} == "true" ]]; then
+    pattern="*.mp4"
+  else
+    echo "usage: mise encode --all | mise encode --include <pattern>" >&2
+    exit 1
+  fi
+fi
+
+encoded=0
+matched=0
+while IFS= read -r -d '' src; do
+  rel="${src#"$src_dir"/}"
+  # shellcheck disable=SC2053 # pattern は glob として照合する
+  [[ $rel == $pattern ]] || continue
+  matched=$((matched + 1))
+
+  out="$out_dir/$rel"
+  if [[ -f $out && ${usage_force:-} != "true" ]]; then
+    echo "skip: $rel (既にエンコード済み)"
+    continue
+  fi
+
+  mkdir -p "$(dirname "$out")"
+  echo "encode: $rel"
+  # 中断時に切り詰められた出力が「エンコード済み」として残らないよう一時ファイルに書く
+  tmp="$out.tmp.mp4"
+  ffmpeg -nostdin -y -i "$src" \
+    -c:v libx264 -crf 20 -preset slow -pix_fmt yuv420p \
+    -c:a aac -b:a 192k \
+    -movflags +faststart \
+    "$tmp"
+  mv "$tmp" "$out"
+  encoded=$((encoded + 1))
+done < <(find "$src_dir" -type f -name '*.mp4' -print0)
+
+if [[ $matched -eq 0 ]]; then
+  echo "warning: '$pattern' に一致する動画が $src_dir/ にありません" >&2
+fi
+echo "encoded $encoded file(s)"

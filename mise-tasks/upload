@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+#MISE description="encoded_videos の動画を R2 バケットにアップロードする"
+#USAGE flag "--all" help="すべての動画をアップロードする"
+#USAGE flag "--include <pattern>" help="対象を絞り込む glob パターン (例: 本戦/*.mp4)"
+#USAGE flag "--dry-run" help="実際には転送せず、対象のファイルだけを表示する"
+
+set -euo pipefail
+
+cd "${MISE_PROJECT_ROOT:-$(dirname "$0")/..}"
+
+pattern="${usage_include:-}"
+if [[ -z $pattern ]]; then
+  if [[ ${usage_all:-} == "true" ]]; then
+    pattern="*.mp4"
+  else
+    echo "usage: mise upload --all | mise upload --include <pattern>" >&2
+    exit 1
+  fi
+fi
+
+dry_run=()
+if [[ ${usage_dry_run:-} == "true" ]]; then
+  dry_run=(--dry-run)
+fi
+
+exec rclone copy encoded_videos "$R2_REMOTE:$R2_BUCKET" \
+  --include "$pattern" \
+  --s3-chunk-size 64M \
+  --s3-upload-concurrency 4 \
+  --transfers 4 \
+  --progress \
+  "${dry_run[@]}"
