@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 #MISE description="encoded_videos の動画を R2 バケットにアップロードする"
+#USAGE flag "--series <id>" required=#true help="イベントシリーズID (例: elnino)"
+#USAGE flag "--event <id>" required=#true help="イベントID (例: elnino_vol_5)"
 #USAGE flag "--all" help="すべての動画をアップロードする"
 #USAGE flag "--include <pattern>" help="対象を絞り込む glob パターン (例: 本戦/*.mp4)"
 #USAGE flag "--dry-run" help="実際には転送せず、対象のファイルだけを表示する"
@@ -8,12 +10,22 @@ set -euo pipefail
 
 cd "${MISE_PROJECT_ROOT:-$(dirname "$0")/..}"
 
+series="${usage_series:-}"
+event="${usage_event:-}"
+# ID はオブジェクトキーの 1 階層になるので、/ や .. が混ざらないよう文字種を制限する
+for id in "$series" "$event"; do
+  if [[ ! $id =~ ^[A-Za-z0-9_-]+$ ]]; then
+    echo "error: --series / --event には英数字と _ - だけを指定してください: '$id'" >&2
+    exit 1
+  fi
+done
+
 pattern="${usage_include:-}"
 if [[ -z $pattern ]]; then
   if [[ ${usage_all:-} == "true" ]]; then
     pattern="*.mp4"
   else
-    echo "usage: mise upload --all | mise upload --include <pattern>" >&2
+    echo "usage: mise upload --series <id> --event <id> (--all | --include <pattern>)" >&2
     exit 1
   fi
 fi
@@ -40,7 +52,11 @@ if [[ ${#files[@]} -eq 0 ]]; then
   exit 0
 fi
 
-exec rclone copy "$src_dir" "$R2_REMOTE:$R2_BUCKET" \
+# キーは <シリーズID>/<イベントID>/<src_dir からの相対パス> になる
+dest="$R2_REMOTE:$R2_BUCKET/$series/$event"
+echo "upload to: $dest"
+
+exec rclone copy "$src_dir" "$dest" \
   --files-from-raw <(printf '%s\n' "${files[@]}") \
   --s3-chunk-size 64M \
   --s3-upload-concurrency 4 \

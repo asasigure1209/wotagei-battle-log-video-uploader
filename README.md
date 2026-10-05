@@ -38,16 +38,18 @@ mise encode --all --force
 
 ### 3. 動画をR2のバケットにアップロードする
 
+`--series`にイベントシリーズID、`--event`にイベントIDを指定する（どちらも必須。英数字と`_` `-`のみ）。
+
 ```bash
 # すべての動画ファイルをアップロード
-mise upload --all
+mise upload --series elnino --event elnino_vol_5 --all
 
 # 指定した動画ファイルをアップロード
-mise upload --include "本戦/*.mp4"
+mise upload --series elnino --event elnino_vol_5 --include "本戦/*.mp4"
 
 # 実際には転送せず、対象のファイルだけを確認する
-mise upload --all --dry-run
+mise upload --series elnino --event elnino_vol_5 --all --dry-run
 ```
 
-オブジェクトキーは`encoded_videos`配下の相対パスがそのまま使われる（例: `予選/M1256.mp4`）。
+オブジェクトキーは`<イベントシリーズID>/<イベントID>/<encoded_videos配下の相対パス>`になる（例: `elnino/elnino_vol_5/予選/M1256.mp4`）。
 
