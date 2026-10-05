@@ -37,9 +37,10 @@ while IFS= read -r -d '' src; do
 
   mkdir -p "$(dirname "$out")"
   echo "encode: $rel"
-  # 中断時に切り詰められた出力が「エンコード済み」として残らないよう一時ファイルに書く
-  tmp="$out.tmp.mp4"
-  ffmpeg -nostdin -y -i "$src" \
+  # 中断時に切り詰められた出力が「エンコード済み」として残らないよう一時ファイルに書く。
+  # 拡張子を .mp4 以外にして upload の対象から外すため、コンテナ形式は -f で明示する
+  tmp="$out.part"
+  ffmpeg -nostdin -y -i "$src" -f mp4 \
     -c:v libx264 -crf 20 -preset slow -pix_fmt yuv420p \
     -c:a aac -b:a 192k \
     -movflags +faststart \
