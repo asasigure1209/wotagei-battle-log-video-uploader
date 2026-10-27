@@ -14,6 +14,7 @@ mise encode --include "本戦/*.mp4"      # glob で絞り込み
 mise encode --all --force              # 出力済みも再エンコード
 mise upload --series elnino --event elnino_vol_5 --all --dry-run   # 転送せず対象だけ確認
 mise upload --series elnino --event elnino_vol_5 --include "本戦/*.mp4"
+mise manifest --series elnino --event elnino_vol_5   # DB に取り込む YAML の雛形を manifests/ に書き出す
 shellcheck mise-tasks/*                # スクリプト変更時の静的チェック
 ```
 
@@ -24,6 +25,8 @@ shellcheck mise-tasks/*                # スクリプト変更時の静的チェ
 - **設定値**: R2 のリモート名とバケット名は `mise.toml` の `[env]` (`R2_REMOTE`, `R2_BUCKET`) で定義し、`upload` が参照する。
 - **エンコード設定**: H.264 (libx264, CRF 20, preset slow, yuv420p) + AAC 192k + `faststart`。中断時に不完全なファイルが「済み」扱いされないよう、`<out>.part` に書き出してから `mv` している。拡張子が `.mp4` でないので、コンテナ形式は `-f mp4` で明示している。
 - **対象ファイルの選び方**: `encode` と `upload` は同じ方法で対象を選ぶ。`find ... -name '*.mp4'` で列挙し、相対パスを bash の `[[ $rel == $pattern ]]` で glob 照合する（`*` は `/` もまたぐので、`本戦/*.mp4` はサブディレクトリにもマッチする）。`upload` は rclone の `--include` を使わず、選んだ一覧を `--files-from-raw` で渡している。照合方法を変えるときは両方のスクリプトを揃えること。
+
+- **DB に取り込むデータ (manifest)**: `mise manifest` は `encoded_videos/` の .mp4 を `find | sort` でパス順に並べ、`ffprobe` の長さ (秒に丸める) と `wc -c` のサイズを、Web アプリ (wotagei-battle-log-web-app の `db:import`) が読む YAML の雛形として `manifests/<シリーズID>/<イベントID>.yaml` に書く。並び順がイベントの中での動画の No. になる。イベント情報・`entries`・`performers` は人が書くので、既存の YAML は `--force` なしでは上書きしない。キーはダブルクオートで書き、`\` と `"` をエスケープしている。YAML の形を変えるときは `db:import` 側も揃えること。
 
 ## 注意点
 

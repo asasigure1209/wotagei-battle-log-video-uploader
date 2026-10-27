@@ -2,7 +2,7 @@
 
 ## 前提
 
-- [mise](https://mise.jdx.dev/) / ffmpeg (libx264 有効) / rclone がインストールされていること
+- [mise](https://mise.jdx.dev/) / ffmpeg (libx264 有効、`mise manifest` は同梱の ffprobe を使う) / rclone がインストールされていること
 - rclone のリモート `r2-wotagei-battle-log` (Cloudflare R2) が `rclone config` で設定済みであること
 - 初回は `mise trust` でこのディレクトリの設定を信頼させる
 
@@ -52,4 +52,22 @@ mise upload --series elnino --event elnino_vol_5 --all --dry-run
 ```
 
 オブジェクトキーは`<イベントシリーズID>/<イベントID>/<encoded_videos配下の相対パス>`になる（例: `elnino/elnino_vol_5/予選/M1256.mp4`）。
+
+### 4. Web アプリの DB に取り込むデータを作る
+
+```bash
+mise manifest --series elnino --event elnino_vol_5
+```
+
+`encoded_videos`配下の動画を調べ、`manifests/<イベントシリーズID>/<イベントID>.yaml`に、Web アプリの DB に取り込むデータの雛形を書き出す。動画ごとのオブジェクトキー・長さ（秒）・サイズ（バイト）は自動で入る。
+
+書き出した YAML に、次を書き込む。
+
+- `series.name` / `event.name` / `event.date`（`YYYY-MM-DD`）/ `event.contact`
+- `entries`: エントリー No. と名前（1 行に 1 人。例: `1: BLAZE`）
+- 動画ごとの `performers`: 出ているエントリー No.（予選は 1 人で`[1]`、本戦は 2 人で`[1, 2]`）
+
+`videos`の並び順が、イベントの中での動画の No. になる。書き出した直後は分類のディレクトリ順・ファイル名順なので、必要なら並べ替える。
+
+書き込んだ内容を消さないよう、YAML がすでにあるときは書き出さない。作り直すときは`--force`を付ける。書き終えた YAML は、Web アプリの`db:import`で DB に取り込む。
 
