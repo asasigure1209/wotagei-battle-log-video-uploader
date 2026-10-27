@@ -1,5 +1,7 @@
 # ヲタ芸バトルログの動画ファイルアップロード
 
+本番に動画をアップロードして、Web アプリで表示を確かめるまでの通しの手順は [docs/production-upload.md](docs/production-upload.md) にまとめている。
+
 ## 前提
 
 - [mise](https://mise.jdx.dev/) / ffmpeg (libx264 有効、`mise manifest` は同梱の ffprobe を使う) / rclone がインストールされていること
