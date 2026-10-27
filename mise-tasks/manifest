@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+#MISE description="encoded_videos の動画の一覧を、Web アプリの DB に取り込む YAML の雛形として書き出す"
+#USAGE flag "--series <id>" required=#true help="イベントシリーズID (例: elnino)"
+#USAGE flag "--event <id>" required=#true help="イベントID (例: elnino_vol_5)"
+#USAGE flag "--force" help="書き出し先の YAML がすでにあっても上書きする"
+
+set -euo pipefail
+
+cd "${MISE_PROJECT_ROOT:-$(dirname "$0")/..}"
+
+series="${usage_series:-}"
+event="${usage_event:-}"
+# upload と同じく、ID はオブジェクトキーの 1 階層になるので文字種を制限する
+for id in "$series" "$event"; do
+  if [[ ! $id =~ ^[A-Za-z0-9_-]+$ ]]; then
+    echo "error: --series / --event には英数字と _ - だけを指定してください: '$id'" >&2
+    exit 1
+  fi
+done
+
+if ! command -v ffprobe >/dev/null; then
+  echo "error: 動画の長さを調べる ffprobe (ffmpeg に含まれる) が見つかりません" >&2
+  exit 1
+fi
+
+src_dir="encoded_videos"
+out="manifests/$series/$event.yaml"
+
+# イベント情報・エントリー・出演者は人が書き込むので、うっかり上書きしない
+if [[ -f $out && ${usage_force:-} != "true" ]]; then
+  echo "error: $out はすでにあります。書き込んだ内容を捨てて作り直すときは --force を付けてください" >&2
+  exit 1
+fi
+
+# YAML のダブルクオートの文字列にする (\ と " をエスケープする)
+quote() {
+  local s="${1//\\/\\\\}"
+  printf '"%s"' "${s//\"/\\\"}"
+}
+
+# upload と同じく encoded_videos 配下の .mp4 を対象にする。
+# 並び順がイベントの中での動画の No. になるので、パスの順 (分類のディレクトリごと、その中はファイル名順) に並べる
+videos=()
+while IFS= read -r -d '' path; do
+  videos+=("$path")
+done < <(find "$src_dir" -type f -name '*.mp4' -print0 | LC_ALL=C sort -z)
+
+if [[ ${#videos[@]} -eq 0 ]]; then
+  echo "error: $src_dir/ に動画がありません。先に mise encode を実行してください" >&2
+  exit 1
+fi
+
+mkdir -p "$(dirname "$out")"
+# 途中で失敗したときに、書きかけの YAML が残らないよう一時ファイルに書いてから置き換える
+tmp="$out.part"
+{
+  cat <<EOF
+# mise manifest が書き出した、Web アプリの DB に取り込むデータ ($series/$event)。
+# "" と entries・performers は人が書き込む。書き終えたら Web アプリの db:import で取り込む
+series:
+  id: $series
+  name: "" # シリーズ名
+event:
+  id: $event
+  name: "" # イベント名
+  date: "" # 開催日 (YYYY-MM-DD)
+  contact: "" # 運営の連絡先
+# エントリー No. と名前を、1 行に 1 人ずつ字下げして書く。例:
+#   1: BLAZE
+#   2: しぐれ
+entries:
+# 並び順が、イベントの中での動画の No. になる。
+# performers には、動画に出ているエントリー No. を書く (予選は 1 人、本戦は 2 人。例: [1, 2])
+videos:
+EOF
+  for path in "${videos[@]}"; do
+    rel="${path#"$src_dir"/}"
+    duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$path")
+    size=$(wc -c <"$path" | tr -d ' ')
+    cat <<EOF
+  - key: $(quote "$series/$event/$rel")
+    durationSec: $(printf '%.0f' "$duration")
+    sizeBytes: $size
+    performers: []
+EOF
+  done
+} >"$tmp"
+mv "$tmp" "$out"
+
+echo "wrote $out (${#videos[@]} video(s))"
