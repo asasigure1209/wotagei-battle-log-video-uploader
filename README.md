@@ -3,7 +3,15 @@
 ## 前提
 
 - [mise](https://mise.jdx.dev/) / ffmpeg (libx264 有効、`mise manifest` は同梱の ffprobe を使う) / rclone がインストールされていること
+  - Homebrew なら `brew install ffmpeg rclone` で入る (Homebrew の ffmpeg は libx264 入り)
 - rclone のリモート `r2-wotagei-battle-log` (Cloudflare R2) が `rclone config` で設定済みであること
+  - R2 の API トークンをこのバケットだけに絞っている場合は、`no_check_bucket = true` も設定する。設定しないと、rclone がバケットを作れるか確かめようとして 403 になることがある
+
+    ```bash
+    rclone config update r2-wotagei-battle-log no_check_bucket true
+    ```
+
+  - 接続は `rclone lsf r2-wotagei-battle-log:wotagei-battle-log` で確かめられる (バケットを絞ったトークンでは、全バケットを一覧する `rclone lsd r2-wotagei-battle-log:` は 403 になるが問題ない)
 - 初回は `mise trust` でこのディレクトリの設定を信頼させる
 
 ## 手順
@@ -71,3 +79,12 @@ mise manifest --series elnino --event elnino_vol_5
 
 書き込んだ内容を消さないよう、YAML がすでにあるときは書き出さない。作り直すときは`--force`を付ける。書き終えた YAML は、Web アプリの`db:import`で DB に取り込む。
 
+## 開発
+
+スクリプト (`mise-tasks/` 配下) を変えたら、shellcheck でチェックする。shellcheck は `mise.toml` の `[tools]` に入れているので、`mise install` で入る。
+
+```bash
+shellcheck mise-tasks/*
+```
+
+スクリプトは macOS 標準の bash 3.2 でも動くように書く。たとえば `set -u` の下で空の配列を `"${arr[@]}"` と展開するとエラーになるので、`${arr[@]+"${arr[@]}"}` と書く。

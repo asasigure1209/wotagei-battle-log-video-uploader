@@ -15,7 +15,7 @@ mise encode --all --force              # 出力済みも再エンコード
 mise upload --series elnino --event elnino_vol_5 --all --dry-run   # 転送せず対象だけ確認
 mise upload --series elnino --event elnino_vol_5 --include "本戦/*.mp4"
 mise manifest --series elnino --event elnino_vol_5   # DB に取り込む YAML の雛形を manifests/ に書き出す
-shellcheck mise-tasks/*                # スクリプト変更時の静的チェック
+shellcheck mise-tasks/*                # スクリプト変更時の静的チェック (shellcheck は mise.toml の [tools] で入る)
 ```
 
 ## 構成と仕組み
@@ -31,3 +31,4 @@ shellcheck mise-tasks/*                # スクリプト変更時の静的チェ
 ## 注意点
 
 - `upload` は `rclone copy` なので、ローカルで削除したファイルは R2 側から消えない。
+- スクリプトは `#!/usr/bin/env bash` で、macOS では標準の bash 3.2 で動く。`set -u` の下で空の配列を `"${arr[@]}"` と展開するとエラーになるので、空になりうる配列は `${arr[@]+"${arr[@]}"}` と書く（`upload` の `dry_run`）。
