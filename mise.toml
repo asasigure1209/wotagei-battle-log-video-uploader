@@ -1,3 +1,6 @@
+[tools]
+shellcheck = "0.11.0"
+
 [env]
 R2_REMOTE = "r2-wotagei-battle-log"
 R2_BUCKET = "wotagei-battle-log"
