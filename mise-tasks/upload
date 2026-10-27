@@ -56,10 +56,11 @@ fi
 dest="$R2_REMOTE:$R2_BUCKET/$series/$event"
 echo "upload to: $dest"
 
+# macOS 標準の bash 3.2 は set -u だと空の配列の展開をエラーにするので、空のときは何も展開しない
 exec rclone copy "$src_dir" "$dest" \
   --files-from-raw <(printf '%s\n' "${files[@]}") \
   --s3-chunk-size 64M \
   --s3-upload-concurrency 4 \
   --transfers 4 \
   --progress \
-  "${dry_run[@]}"
+  ${dry_run[@]+"${dry_run[@]}"}
