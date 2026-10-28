@@ -21,6 +21,9 @@ if [[ -z $pattern ]]; then
   fi
 fi
 
+# カメラによっては拡張子が .MP4 になるので、拡張子もパターンも大文字・小文字を区別せずに照合する
+shopt -s nocasematch
+
 encoded=0
 matched=0
 while IFS= read -r -d '' src; do
@@ -29,7 +32,8 @@ while IFS= read -r -d '' src; do
   [[ $rel == $pattern ]] || continue
   matched=$((matched + 1))
 
-  out="$out_dir/$rel"
+  # 出力の拡張子は .mp4 にそろえる (upload と manifest は .mp4 だけを対象にする)
+  out="$out_dir/${rel%.*}.mp4"
   if [[ -f $out && ${usage_force:-} != "true" ]]; then
     echo "skip: $rel (既にエンコード済み)"
     continue
@@ -47,7 +51,7 @@ while IFS= read -r -d '' src; do
     "$tmp"
   mv "$tmp" "$out"
   encoded=$((encoded + 1))
-done < <(find "$src_dir" -type f -name '*.mp4' -print0)
+done < <(find "$src_dir" -type f -iname '*.mp4' -print0)
 
 if [[ $matched -eq 0 ]]; then
   echo "warning: '$pattern' に一致する動画が $src_dir/ にありません" >&2

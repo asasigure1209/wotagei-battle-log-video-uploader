@@ -59,7 +59,7 @@ EOF
 find source_videos encoded_videos -mindepth 1 -not -name .gitkeep   # 何も出なければ空
 ```
 
-元の動画を、分類 (予選・本戦など) ごとのディレクトリに分けて置く。ファイル名は .mp4 にする。
+元の動画を、分類 (予選・本戦など) ごとのディレクトリに分けて置く。ファイル名は .mp4 にする (.MP4 のように大文字でもよい。エンコード後は .mp4 になる)。
 
 ```
 source_videos/
